@@ -1,0 +1,14 @@
+*.sqlite3
+*.db
+
+# Environment variables
+*.env
+*.pyc
+
+# Python
+__pycache__/
+
+# Virtual Environment
+env/
+
+receipts/
