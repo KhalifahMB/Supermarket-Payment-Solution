@@ -3,8 +3,9 @@ from ttkbootstrap.constants import *
 from database import DatabaseManager
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from tkinter import messagebox
+from tkinter import messagebox, Canvas
 from datetime import datetime
+from utils.report import product_performance, daily_sales
 
 
 class AdminDashboard(ttk.Frame):
@@ -18,7 +19,7 @@ class AdminDashboard(ttk.Frame):
         main_frame = ttk.Frame(self)
         main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-        notebook = ttk.Notebook(main_frame)
+        notebook = ttk.Notebook(main_frame,)
 
         # Inventory Management Tab
         inventory_tab = ttk.Frame(notebook)
@@ -40,7 +41,14 @@ class AdminDashboard(ttk.Frame):
         self.inventory_tree.heading('name', text='Product')
         self.inventory_tree.heading('price', text='Price')
         self.inventory_tree.heading('stock', text='Stock')
-        self.inventory_tree.pack(fill=BOTH, expand=True, padx=10, pady=10)
+        self.inventory_tree.pack(
+            fill=BOTH, expand=True, padx=10, pady=10, ipadx=30, ipady=30)
+
+        self.inventory_tree.column(
+            'id', width=150, anchor=CENTER, )
+        self.inventory_tree.column('name', width=150, anchor=CENTER)
+        self.inventory_tree.column('price', width=150, anchor=CENTER)
+        self.inventory_tree.column('stock', width=150, anchor=CENTER)
 
         # Control Buttons
         btn_frame = ttk.Frame(parent)
@@ -99,38 +107,16 @@ class AdminDashboard(ttk.Frame):
 
     def generate_report(self):
         report_type = self.report_type.get()
-        start = self.start_date.entry.get()
-        end = self.end_date.entry.get()
-        start = datetime.strptime(start, '%d/%m/%Y')
-        end = datetime.strptime(end, '%d/%m/%Y')
+        start_date = self.start_date.entry.get()
+        end_date = self.end_date.entry.get()
+        start_date = datetime.strptime(start_date, '%d/%m/%Y')
+        end_date = datetime.strptime(end_date, '%d/%m/%Y')
         if report_type == "Daily Sales":
-            data = self.db.execute_query('''
-                SELECT DATE(timestamp) AS date, SUM(total) AS total
-                FROM Sales
-                WHERE date BETWEEN ? AND ?
-                GROUP BY date
-            ''', (start, end), fetch=True)
-            fig = Figure()
-            ax = fig.add_subplot(111)
-            dates = [row['date'] for row in data]
-            totals = [row['total'] for row in data]
-            ax.bar(dates, totals)
-            ax.set_title("Daily Sales Report")
+            fig = daily_sales(self.db, start, end)
             self.chart_canvas.figure = fig
             self.chart_canvas.draw()
         elif report_type == "Product Performance":
-            data = self.db.execute_query('''
-                SELECT Date(timestamp) as date, SUM(total) as total
-                FROM Sales
-                WHERE date BETWEEN Date(?) AND Date(?)
-                GROUP BY date
-            ''', (start, end), fetch=True)
-            fig = Figure()
-            ax = fig.add_subplot(111)
-            date = [row['date'] for row in data]
-            total_sale = [row['total'] for row in data]
-            ax.bar(date, total_sale)
-            ax.set_title("Daily Sales Report")
+            fig = product_performance(self.db)
             self.chart_canvas.figure = fig
             self.chart_canvas.draw()
 

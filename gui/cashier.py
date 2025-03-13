@@ -1,34 +1,40 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import simpledialog
 import ttkbootstrap as ttk
-from ttkbootstrap.dialogs.dialogs import Messagebox
+from ttkbootstrap.dialogs.dialogs import Messagebox as messagebox
 from ttkbootstrap.constants import *
 from database import DatabaseManager
 from transactions import PaymentProcessor
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 import datetime
+from PIL import ImageTk, Image
+from utils.cart import *
+from utils.receipt import *
+
+# Constants
+CURRENCY = "₦"
+CURRENCY_CODE = "USD"
+CHECK_PAYMENT_INTERVAL = 10000  # 10 seconds
 
 
 class CashierInterface(ttk.Frame):
     def __init__(self, parent, user):
         super().__init__(parent)
+        self.style = ttk.Style()
         self.user = user
         self.db = DatabaseManager()
+        self.payment_processor = PaymentProcessor()
         self.cart = []
         self.create_widgets()
 
     def create_widgets(self):
         main_frame = ttk.Frame(self)
-        main_frame.pack(fill=BOTH, expand=True, padx=10, pady=5)
-
-        # Left Panel - Product Search and Cart
-        left_frame = ttk.Frame(main_frame)
-        left_frame.pack(side=LEFT, fill=BOTH, expand=True)
+        main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
         # Product Search
-        search_frame = ttk.Frame(left_frame)
-        search_frame.pack(pady=5)
+        search_frame = ttk.Frame(main_frame)
+        search_frame.pack(pady=10)
 
         ttk.Label(search_frame, text="Search Product:").pack(side=LEFT)
         self.search_entry = ttk.Entry(search_frame)
@@ -39,17 +45,12 @@ class CashierInterface(ttk.Frame):
         search_btn.pack(side=LEFT)
 
         # Product List
-        self.product_tree = ttk.Treeview(left_frame, columns=(
-            'id', 'name', 'price', 'stock'), show='headings', padding=5, height=5)
-        self.product_tree.heading('id', text='ID')
-        self.product_tree.heading('name', text='Product Name')
-        self.product_tree.heading('price', text='Price')
-        self.product_tree.heading('stock', text='Stock')
-        self.product_tree.pack(expand=False, pady=5, padx=5)
+        self.product_tree = self.create_treeview(main_frame, columns=(
+            'id', 'name', 'price', 'stock'), headings=['ID', 'Product Name', 'Price', 'Stock'], height=5)
 
         # Cart Management
-        cart_frame = ttk.Frame(left_frame)
-        cart_frame.pack(padx=5,)
+        cart_frame = ttk.Frame(main_frame)
+        cart_frame.pack(padx=5)
 
         ttk.Button(cart_frame, text="Add to Cart",
                    command=self.add_to_cart).pack(side=LEFT, padx=2)
@@ -60,91 +61,75 @@ class CashierInterface(ttk.Frame):
         ttk.Button(cart_frame, text="Clear Cart",
                    command=self.clear_cart).pack(side=LEFT, padx=2)
 
-        # Right Panel - Cart Display
-        right_frame = ttk.Frame(main_frame)
-        right_frame.pack(side=RIGHT, fill=BOTH)
-
-        self.cart_tree = ttk.Treeview(left_frame, columns=(
-            'name', 'price', 'qty', 'total'), show='headings', height=10)
-        self.cart_tree.heading('name', text='Product')
-        self.cart_tree.heading('price', text='Unit Price')
-        self.cart_tree.heading('qty', text='Qty')
-        self.cart_tree.heading('total', text='Total')
-        self.cart_tree.pack(fill=BOTH, expand=True, padx=10, pady=5)
+        self.cart_tree = self.create_treeview(main_frame, columns=(
+            'name', 'price', 'qty', 'total'), headings=['Product', 'Unit Price', 'Qty', 'Total'], height=10)
 
         # Total Display
-        total_frame = ttk.Frame(left_frame)
-        total_frame.pack(fill=X, pady=5)
+        total_frame = ttk.Frame(main_frame)
+        total_frame.pack(pady=10)
 
         ttk.Label(total_frame, text="Total:",
-                  style='Total.TLabel').pack(padx=5)
+                  style='Total.TLabel').pack(padx=5, side=LEFT)
         self.total_label = ttk.Label(
-            total_frame, text="₦0.00", style='Total.TLabel')
-        self.total_label.pack(padx=5)
+            total_frame, text=f"{CURRENCY}0.00", style='Total.TLabel')
+        self.total_label.pack(padx=5, side=LEFT)
 
         # Payment Buttons
         ttk.Button(total_frame, text="Process Payment",
-                   command=self.process_payment).pack(padx=5)
+                   command=self.process_payment).pack(padx=5, side=RIGHT)
+
+    def create_treeview(self, parent, columns, headings, height):
+        tree = ttk.Treeview(parent, columns=columns,
+                            show='headings', padding=5, height=height,)
+        for col, heading in zip(columns, headings):
+            tree.heading(col, text=heading)
+            tree.column(col, width=150, anchor=CENTER)
+        tree.pack(fill=BOTH, pady=10, padx=5)
+        return tree
 
     def search_product(self):
         query = self.search_entry.get()
-        if not query or (query == ''):
-            message_box = Messagebox()
-            message_box.show_warning(
-                message='Please provide a search parameter', title="Required Fieldd ", parent=self, alert=True, )
+        if not query:
+            self.show_message('Please provide a search parameter',
+                              "Required Field", 'warning')
             return
-        products = self.db.execute_query(
-            "SELECT * FROM Products WHERE name LIKE ? OR id = ?",
-            (f"%{query}%", query),
-            fetch=True
-        )
-
+        products = product_search(self.db, query)
         self.product_tree.delete(*self.product_tree.get_children())
-        index = len(products)//2
         for product in products:
-            id = self.product_tree.insert('', 'end', values=(
-                product['id'],
-                product['name'],
-                f"₦{product['price']:.2f}",
-                product['stock']
-            ))
+            self.product_tree.insert('', 'end', values=(
+                product['id'], product['name'], f"{CURRENCY}{product['price']:.2f}", product['stock']))
 
     def add_to_cart(self):
         selected = self.product_tree.selection()
         if not selected:
-            messagebox.showwarning("Selection Required",
-                                   "Please select a product first")
+            self.show_message("Please select a product first",
+                              "Selection Required", 'warning')
             return
 
         product_id = self.product_tree.item(selected[0], 'values')[0]
-        product = self.db.execute_query(
-            "SELECT * FROM Products WHERE id = ?",
-            (product_id,),
-            fetch=True
-        )[0]
 
-        # Check stock
+        product = get_product(self.db, product_id=product_id)
+
         if product['stock'] <= 0:
-            messagebox.showerror(
-                "Out of Stock", "This product is out of stock")
+            self.show_message("This product is out of stock",
+                              "Out of Stock", 'error')
             return
 
-        # Add to cart or update quantity
-        existing = next(
-            (item for item in self.cart if item['id'] == product_id), None)
+        existing = None
+        for item in self.cart:
+            if item['id'] == product['id']:
+                existing = item
+                break
+
         if existing:
             if existing['quantity'] < product['stock']:
                 existing['quantity'] += 1
             else:
-                messagebox.showerror(
-                    "Out of Stock", "Maximum quantity reached")
+                self.show_message("Maximum quantity reached",
+                                  "Out of Stock", 'error')
         else:
-            self.cart.append({
-                'id': product_id,
-                'name': product['name'],
-                'price': product['price'],
-                'quantity': 1
-            })
+            self.cart.append(
+                {'id': product['id'], 'name': product['name'], 'price': product['price'], 'quantity': 1})
 
         self.update_cart_display()
 
@@ -159,15 +144,11 @@ class CashierInterface(ttk.Frame):
         new_qty = simpledialog.askinteger(
             "Update Quantity", "Enter new quantity:", minvalue=1)
         if new_qty:
-            product = self.db.execute_query(
-                "SELECT stock FROM Products WHERE id = ?",
-                (product_id,),
-                fetch=True
-            )[0]
+            product = get_product(self.db, product_id)
 
         if new_qty > product['stock']:
-            messagebox.showerror(
-                "Stock Exceeded", f"Only {product['stock']} available")
+            self.show_message(
+                f"Only {product['stock']} available", "Stock Exceeded", 'error')
             return
 
         for item in self.cart:
@@ -184,39 +165,73 @@ class CashierInterface(ttk.Frame):
             item_total = item['price'] * item['quantity']
             total += item_total
             self.cart_tree.insert('', 'end', values=(
-                item['name'],
-                f"₦{item['price']:.2f}",
-                item['quantity'],
-                f"₦{item_total:.2f}"
-            ))
+                item['name'], f"{CURRENCY}{item['price']:.2f}", item['quantity'], f"{CURRENCY}{item_total:.2f}"))
 
-        self.total_label.config(text=f"₦{total:.2f}")
+        self.total_label.config(text=f"{CURRENCY}{total:.2f}")
 
     def process_payment(self):
         if not self.cart:
-            messagebox.showwarning(
-                "Empty Cart", "Add items to cart before payment")
+            self.show_message(
+                "Add items to cart before payment", "Empty Cart", 'warning')
+            return
+        line_items = []
+        for item in self.cart:
+            line_items.append({
+                "name": item['name'],
+                "quantity": str(item['quantity']),
+                "base_price_money": {
+                    "amount": int(item['price'] * 100),
+                    "currency": CURRENCY_CODE
+                }
+            })
+
+        payment_result = self.payment_processor.create_payment_link(line_items)
+
+        if payment_result["status"] == "error":
+            self.show_message(
+                payment_result["message"], "Payment Error", 'error')
             return
 
+        payment_url = payment_result["payment_url"]
+        order_id = payment_result["order_id"]
+
+        qr_image = self.payment_processor.generate_qr_code(payment_url)
+        qr_image_tk = ImageTk.PhotoImage(qr_image)
+
         payment_window = ttk.Toplevel(self)
-        payment_window.title("Payment Processing")
+        payment_window.title("Scan to Pay")
 
-        # Payment method selection
-        ttk.Label(payment_window, text="Select Payment Method:").pack(pady=5)
-        method = ttk.Combobox(payment_window, values=["Cash", "Card"])
-        method.pack(pady=5)
+        qr_label = ttk.Label(payment_window, image=qr_image_tk)
+        qr_label.image = qr_image_tk  # Keep a reference to avoid garbage collection
+        qr_label.pack(pady=10)
 
-        # Process payment
-        def finalize_payment():
-            # Process payment logic here
-            self.save_sale(method.get())
-            self.generate_receipt()
-            payment_window.destroy()
-            self.clear_cart()
-            messagebox.showinfo("Success", "Payment processed successfully")
+        ttk.Label(payment_window,
+                  text="Scan the QR code to complete payment.").pack(pady=5)
 
-        ttk.Button(payment_window, text="Confirm Payment",
-                   command=finalize_payment).pack(pady=5)
+        def check_payment_status():
+            verification_result = self.payment_processor.verify_payment(
+                order_id=order_id)
+
+            if verification_result["status"] == "success":
+                total = sum(item['price'] * item['quantity']
+                            for item in self.cart)
+                payment_window.destroy()
+                self.save_sale("Square Checkout", total)
+                generate_receipt(self.user, self.cart)
+                self.clear_cart()
+                self.show_message(
+                    "Payment processed successfully.", "Success", 'info')
+            elif verification_result["status"] == "pending":
+                self.after(CHECK_PAYMENT_INTERVAL, check_payment_status)
+            else:
+                self.show_message(
+                    verification_result["message"], "Payment Failed", 'error')
+
+        self.after(CHECK_PAYMENT_INTERVAL, check_payment_status)
+
+        update_status_btn = ttk.Button(
+            payment_window, text="Update Status", command=check_payment_status)
+        update_status_btn.pack(pady=5)
 
     def clear_cart(self):
         self.cart = []
@@ -231,62 +246,21 @@ class CashierInterface(ttk.Frame):
         self.cart = [item for item in self.cart if item['name'] != item_name]
         self.update_cart_display()
 
-    def save_sale(self, payment_method):
-        total = sum(item['price'] * item['quantity'] for item in self.cart)
+    def save_sale(self, payment_method, total):
+        sale_id = sale_save(self.db, self.user['id'], total, payment_method)
 
-        # Create sale record
-        sale_id = self.db.execute_query(
-            "INSERT INTO Sales (user_id, total, payment_method) VALUES (?, ?, ?)",
-            (self.user['id'], total, payment_method)
-        )
-
-        # Create sale items
         for item in self.cart:
-            self.db.execute_query(
-                '''INSERT INTO SaleItems (sale_id, product_id, quantity, price)
-                   VALUES (?, ?, ?, ?)''',
-                (sale_id, item['id'],
-                 item['quantity'], item['price'])
-            )
+            try:
+                save_saleitem(db=self.db, item=item)
 
-            # Update stock
-            self.db.execute_query(
-                "UPDATE Products SET stock = stock - ? WHERE id = ?",
-                (item['quantity'], item['id'])
-            )
+                update_productstock(db=self.db, item=item)
+            except Exception as e:
+                self.show_message(str(e), 'Saving Error', 'warning')
 
-    def generate_receipt(self):
-        filename = f"receipts/receipt_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
-        c = canvas.Canvas(filename, pagesize=letter)
-
-        # Receipt header
-        c.setFont("Helvetica-Bold", 18)
-        c.drawString(100, 750, "SUPERMARKET POS")
-        c.setFont("Helvetica", 12)
-        c.drawString(
-            100, 730, f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        c.drawString(100, 710, f"Cashier: {self.user['username']}")
-
-        # Items
-        y = 680
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(100, y, "Product")
-        c.drawString(300, y, "Qty")
-        c.drawString(400, y, "Price")
-        c.drawString(500, y, "Total")
-
-        c.setFont("Helvetica", 12)
-        for item in self.cart:
-            y -= 20
-            c.drawString(100, y, item['name'])
-            c.drawString(300, y, str(item['quantity']))
-            c.drawString(400, y, f"₦{item['price']:.2f}")
-            c.drawString(500, y, f"₦{item['price'] * item['quantity']:.2f}")
-
-        # Total
-        y -= 30
-        total = sum(item['price'] * item['quantity'] for item in self.cart)
-        c.drawString(400, y, "Total:")
-        c.drawString(500, y, f"₦{total:.2f}")
-
-        c.save()
+    def show_message(self, message, title, msg_type):
+        if msg_type == 'warning':
+            messagebox.show_warning(title, message)
+        elif msg_type == 'error':
+            messagebox.show_error(title, message)
+        elif msg_type == 'info':
+            messagebox.show_info(title, message)

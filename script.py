@@ -2,8 +2,7 @@ from database import DatabaseManager
 from sqlite3 import Date
 import random
 from datetime import datetime, timedelta
-import math
-
+import os
 db = DatabaseManager()
 
 
@@ -40,3 +39,52 @@ db = DatabaseManager()
 #                 SELECT DATE(timestamp) AS date, SUM(total) AS total
 #                 FROM Sales
 #                 ''', fetch=True)
+
+# def get_products():
+#     data = db.execute_query('''
+#                 SELECT product_id, SUM(price * quantity) as total_price
+#                  FROM SaleItems
+#                 GROUP BY product_id
+#             ''',  fetch=True)
+#     return data
+
+
+# products_info = []
+# products = get_products()
+# for row in products:
+#     product = []
+#     product.append(row['product_id'])
+#     product.append(row['total_price'])
+#     products_info.append(product)
+
+# print(products_info)
+
+# def get_products_as_dict():
+#     data = db.execute_query('''
+#                             SELECT product_id as product, SUM(price * quantity) as total_price
+#                             FROM SaleItems
+#                             GROUP BY product_id
+#                         ''',  fetch=True)
+#     product_data = db.execute_query('''
+#                 SELECT * FROM Products
+#             ''',  fetch=True)
+#     product_dict = {}
+#     for row in product_data:
+#         for product in data:
+#             if product['product'] == row['id']:
+#                 values = [row['name'], product['total_price']]
+#                 product_dict[row['id']] = values
+#     x = [product_dict[x][1] for x in product_dict]
+#     y = [product_dict[y][0] for y in product_dict]
+#     print(product_dict)
+#     print(x)
+#     print(y)
+
+
+# get_products_as_dict()
+
+# api_key = os.getenv('SECRET_KEY')
+# print(os.getenv("SECRET_KEY"))
+# print(f'api_key: {api_key}')
+# print(os.getenv('SQUARE_ACCESS_TOKEN'))
+print(os.getenv('SQUARE_LOCATION_ID'))
