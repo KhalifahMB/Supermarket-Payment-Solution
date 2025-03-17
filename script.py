@@ -1,16 +1,33 @@
+from auth import AuthSystem
 from database import DatabaseManager
 from sqlite3 import Date
 import random
 from datetime import datetime, timedelta
 import os
+import math
+import hashlib
+from utils.cart import sale_save, save_saleitem, get_product
 db = DatabaseManager()
 
+product_names = [
+    'Coca-Cola 500ml', 'Indomie Chicken 70g', 'Pepsi 500ml', 'Lays Chips', 'Oreo Biscuits',
+    'Sprite 500ml', 'Mountain Dew 500ml', 'Fanta 500ml', '7Up 500ml', 'Mirinda 500ml',
+    'Pringles Original', 'Pringles Sour Cream', 'Pringles BBQ', 'Doritos Nacho Cheese', 'Doritos Cool Ranch',
+    'KitKat 4 Finger', 'Snickers Bar', 'Mars Bar', 'Twix Bar', 'Bounty Bar',
+    'Cadbury Dairy Milk', 'Cadbury Fruit & Nut', 'Cadbury Caramel', 'Galaxy Smooth Milk', 'Galaxy Caramel',
+    'Nestle Crunch', 'Nestle Milkybar', 'Nestle Aero', 'Nestle KitKat Chunky', 'Nestle Lion Bar',
+    'Hershey\'s Milk Chocolate', 'Hershey\'s Cookies \'n\' Creme', 'Hershey\'s Almond', 'Hershey\'s Dark Chocolate', 'Hershey\'s Gold',
+    'M&M\'s Peanut', 'M&M\'s Chocolate', 'M&M\'s Crispy', 'Skittles Original', 'Skittles Sour',
+    'Haribo Goldbears', 'Haribo Starmix', 'Haribo Tangfastics', 'Haribo Happy Cola', 'Haribo Twin Snakes',
+    'Lay\'s Classic', 'Lay\'s Sour Cream & Onion', 'Lay\'s BBQ', 'Lay\'s Salt & Vinegar', 'Lay\'s Cheddar & Sour Cream',
+    'Ruffles Original', 'Ruffles Cheddar & Sour Cream', 'Ruffles BBQ', 'Ruffles Sour Cream & Onion', 'Ruffles All Dressed'
+]
 
 # def generate_random_sales_data():
 #     sales_data = []
 #     start_date = datetime(2020, 1, 1)
 #     end_date = datetime(2025, 3, 9)
-#     for _ in range(20):
+#     for _ in range(10):
 #         user_id = random.choice([1, 2])
 #         total = math.floor(random.uniform(250, 100000))
 #         payment_method = random.choice(['Cash', 'Card'])
@@ -18,27 +35,38 @@ db = DatabaseManager()
 #                      random.random()).replace(microsecond=0)
 #         sales_data.append((user_id, total, payment_method, timestamp))
 #     return sales_data
-
-
 # sales_data = generate_random_sales_data()
 # for sale in sales_data:
 #     data = db.execute_query(
 #         "INSERT INTO Sales (user_id,total,  payment_method, timestamp) VALUES (?, ?, ?, ?)", sale)
 
+# def generate_random_product_data():
+#     product_data = []
+#     for product in product_names:
+#         name = product
+#         price = round(random.uniform(100, 500), 2)
+#         stock = random.randint(20, 100)
+#         low_stock_threshold = random.randint(5, 20)
+#         product_data.append((name, price, stock, low_stock_threshold))
+#     return product_data
+# product_data = generate_random_product_data()
+# for product in product_data:
+#     db.execute_query(
+#         "INSERT OR IGNORE INTO Products (name, price, stock, low_stock_threshold) VALUES (?, ?, ?, ?)", product)
 
 # db.execute_query("INSERT OR IGNORE INTO Users VALUES (?, ?, ?, ?)",
-#                  (1, 'admin', 'admin123', 'admin'))
+#                  (1, 'Muhammad', 'admin123', 'admin'))
 # db.execute_query("INSERT OR IGNORE INTO Users VALUES (?, ?, ?, ?)",
-#                  (2, 'cashier1', 'cash123', 'cashier'))
-# db.execute_query("INSERT OR IGNORE INTO Products VALUES (?, ?, ?, ?, ?)",
-#                  (1, 'Coca-Cola 500ml', 250.0, 100, 10))
-# db.execute_query("INSERT OR IGNORE INTO Products VALUES (?, ?, ?, ?, ?)",
-#                  (2, 'Indomie Chicken 70g', 150.0, 50, 5))
+#                  (2, 'Usman', 'cash123', 'cashier'))
 
-# data = db.execute_query('''
+
+# sales_data = db.execute_query('''
 #                 SELECT DATE(timestamp) AS date, SUM(total) AS total
 #                 FROM Sales
 #                 ''', fetch=True)
+
+# for sale in sales_data:
+#     print(sale['date'], sale:)
 
 # def get_products():
 #     data = db.execute_query('''
@@ -83,8 +111,29 @@ db = DatabaseManager()
 
 # get_products_as_dict()
 
-# api_key = os.getenv('SECRET_KEY')
-# print(os.getenv("SECRET_KEY"))
-# print(f'api_key: {api_key}')
-# print(os.getenv('SQUARE_ACCESS_TOKEN'))
-print(os.getenv('SQUARE_LOCATION_ID'))
+
+# items = []
+# for i in range(len(product_names) + 1):
+#     item = {}
+#     id = random.randint(i, len(product_names))
+#     item['id'] = id
+#     item['quantity'] = random.randint(2, 10)
+#     item['price'] = get_product(db, id)['price']
+#     items.append(item)
+
+# for item in items:
+#     sale_item = save_saleitem(
+#         db=db, order_id=item['id'] * item['price'], item=item)
+
+# def hash_passtword(password: str) -> str:
+# Hashes a password using SHA-256 and returns the hashed password
+#     return hashlib.sha256(password.encode()).hexdigest()
+
+
+# password = hash_password(password='cash123')
+# print(password)
+
+# db.execute_query(
+#     "UPDATE Users SET password = ?  WHERE id = ?",
+#     (password, 2)
+# )

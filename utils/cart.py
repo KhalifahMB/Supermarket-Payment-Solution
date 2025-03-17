@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 def product_search(db, query):
     products = db.execute_query(
         "SELECT * FROM Products WHERE name LIKE ? OR id = ?", (f"%{query}%", query), fetch=True)
@@ -17,14 +20,16 @@ def sale_save(db, user_id, total, method):
         "INSERT INTO Sales (user_id, total, payment_method) VALUES (?, ?, ?)",
         (user_id, total, method)
     )
+    return sale_id
 
 
-def save_saleitem(db, item):
-    db.execute_query(
-        '''INSERT INTO SaleItems (sale_id, product_id, quantity, price)
+def save_saleitem(db, order_id, item):
+    data = db.execute_query(
+        '''INSERT INTO SaleItems (order_id, product_id, quantity, price)
                 VALUES (?, ?, ?, ?)''',
-        (sale_id, item['id'], item['quantity'], item['price'])
+        (order_id, item['id'], item['quantity'], item['price'])
     )
+    return data
 
 
 def update_productstock(db, item):

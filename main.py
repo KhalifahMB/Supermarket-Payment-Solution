@@ -12,6 +12,7 @@ class POSApp(ttk.Window):
         self.title("Supermarket POS")
         self.geometry("800x600")
         self.current_user = None
+        self.show_login_screen()
 
         # Create the logout button but don't pack it yet
         self.logout_button = ttk.Button(
@@ -23,8 +24,6 @@ class POSApp(ttk.Window):
 
         # Show the exit button
         self.exit_button.pack(side=RIGHT, anchor=NE, padx=10, pady=10)
-
-        self.show_login_screen()
 
     def log_out(self):
         self.current_user = None

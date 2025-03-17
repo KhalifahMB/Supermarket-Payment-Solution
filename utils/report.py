@@ -1,5 +1,6 @@
 from database import DatabaseManager
 from matplotlib.figure import Figure
+import math
 
 
 def daily_sales(db, start, end):
@@ -24,6 +25,7 @@ def product_performance(db):
                 SELECT product_id as product, SUM(price * quantity) as total_price
                  FROM SaleItems
                 GROUP BY product_id
+                LIMIT 10
             ''',  fetch=True)
 
     product_data = db.execute_query('''
@@ -39,7 +41,7 @@ def product_performance(db):
     fig = Figure()
     ax = fig.add_subplot(111)
     x = [x[1] for x in product_dict.values()]
-    y = [y[1] for y in product_dict.values()]
+    y = [math.floor(y[1]) for y in product_dict.values()]
     ax.pie(x=x, data=product_dict, labels=y)
     ax.set_title("Product Sale Performance")
     legend = [y[0] for y in product_dict.values()]

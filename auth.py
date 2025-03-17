@@ -16,6 +16,13 @@ class AuthSystem:
         hashed_pw = self.hash_password(password)
         # Execute the query with hashed password
         result = self.db.execute_query(
-            query, (username, password), fetch=True)
+            query, (username, hashed_pw), fetch=True)
         # Return the first result if found, otherwise None
         return result[0] if result else None
+
+    def signup(self, username, password, role):
+        hashed_pw = self.hash_password(password)
+        self.db.execute_query(
+            "INSERT INTO Users (username, password, role) VALUES (?, ?, ?)",
+            (username, hashed_pw, role)
+        )

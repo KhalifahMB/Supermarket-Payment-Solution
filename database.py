@@ -43,7 +43,7 @@ class DatabaseManager:
             # Create SaleItems table with sale_id, product_id, quantity, price, and timestamp columns
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS SaleItems (
-                    sale_id INTEGER,
+                    order_id INTEGER,
                     product_id INTEGER,
                     quantity INTEGER,
                     price REAL,

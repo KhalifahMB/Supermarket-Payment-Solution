@@ -216,7 +216,7 @@ class CashierInterface(ttk.Frame):
                 total = sum(item['price'] * item['quantity']
                             for item in self.cart)
                 payment_window.destroy()
-                self.save_sale("Square Checkout", total)
+                self.save_sale("Square Checkout", total, order_id=order_id)
                 generate_receipt(self.user, self.cart)
                 self.clear_cart()
                 self.show_message(
@@ -246,16 +246,16 @@ class CashierInterface(ttk.Frame):
         self.cart = [item for item in self.cart if item['name'] != item_name]
         self.update_cart_display()
 
-    def save_sale(self, payment_method, total):
+    def save_sale(self, payment_method, total, order_id):
         sale_id = sale_save(self.db, self.user['id'], total, payment_method)
 
         for item in self.cart:
             try:
-                save_saleitem(db=self.db, item=item)
+                save_saleitem(db=self.db, order_id=order_id, item=item)
 
                 update_productstock(db=self.db, item=item)
             except Exception as e:
-                self.show_message(str(e), 'Saving Error', 'warning')
+                self.show_message(str(e), 'Saving Error', 'error')
 
     def show_message(self, message, title, msg_type):
         if msg_type == 'warning':
