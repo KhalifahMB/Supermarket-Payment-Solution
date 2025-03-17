@@ -28,6 +28,3 @@ def generate_receipt(user, cart):
     pdf.drawString(
         100, y, f"Total: {CURRENCY}{sum(item['price'] * item['quantity'] for item in cart):.2f}")
     return pdf
-
-
-# resceipt_pdf = generate_receipt({}, {})

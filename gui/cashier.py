@@ -5,12 +5,9 @@ from ttkbootstrap.dialogs.dialogs import Messagebox as messagebox
 from ttkbootstrap.constants import *
 from database import DatabaseManager
 from transactions import PaymentProcessor
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
 import datetime
 from PIL import ImageTk, Image
 from utils.cart import *
-from utils.receipt import *
 
 # Constants
 CURRENCY = "₦"
@@ -194,6 +191,7 @@ class CashierInterface(ttk.Frame):
 
         payment_url = payment_result["payment_url"]
         order_id = payment_result["order_id"]
+        payment_id = payment_result["payment_id"]
 
         qr_image = self.payment_processor.generate_qr_code(payment_url)
         qr_image_tk = ImageTk.PhotoImage(qr_image)
@@ -208,6 +206,14 @@ class CashierInterface(ttk.Frame):
         ttk.Label(payment_window,
                   text="Scan the QR code to complete payment.").pack(pady=5)
 
+        entry = ttk.Entry(payment_window, textvariable=payment_url, width=20)
+        entry.insert(0, payment_url)
+        entry.pack(pady=5)
+
+        status_label = ttk.Label(
+            payment_window, text="Payment Status: Pending")
+        status_label.pack(pady=5)
+
         def check_payment_status():
             verification_result = self.payment_processor.verify_payment(
                 order_id=order_id)
@@ -217,21 +223,35 @@ class CashierInterface(ttk.Frame):
                             for item in self.cart)
                 payment_window.destroy()
                 self.save_sale("Square Checkout", total, order_id=order_id)
-                generate_receipt(self.user, self.cart)
                 self.clear_cart()
                 self.show_message(
                     "Payment processed successfully.", "Success", 'info')
+                return
             elif verification_result["status"] == "pending":
+                status_label.config(
+                    text=f"Payment Status: {verification_result['state']}")
                 self.after(CHECK_PAYMENT_INTERVAL, check_payment_status)
+                return
             else:
+                status_label.config(text="Payment Status: Failed")
                 self.show_message(
                     verification_result["message"], "Payment Failed", 'error')
+                return
+
+        def cancel_payment():
+            self.payment_processor.delete_payment_link(payment_id)
+            payment_window.destroy()
+            self.show_message("Payment cancelled", "Cancelled", 'info')
 
         self.after(CHECK_PAYMENT_INTERVAL, check_payment_status)
 
         update_status_btn = ttk.Button(
             payment_window, text="Update Status", command=check_payment_status)
         update_status_btn.pack(pady=5)
+
+        cancel_payment_btn = ttk.Button(
+            payment_window, text="Cancel Payment", command=cancel_payment, bootstyle="danger")
+        cancel_payment_btn.pack(pady=5)
 
     def clear_cart(self):
         self.cart = []

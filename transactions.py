@@ -25,7 +25,6 @@ class PaymentProcessor:
         """
         Create a payment link for the given line items.
         """
-
         # Prepare the checkout request
         body = {
             "order": {
@@ -45,6 +44,7 @@ class PaymentProcessor:
             if result.is_success():
                 return {
                     "status": "success",
+                    "payment_id": result.body['payment_link']['id'],
                     "payment_url": result.body['payment_link']['url'],
                     "order_id": result.body['payment_link']['order_id']
                 }
@@ -83,9 +83,26 @@ class PaymentProcessor:
             if result.is_success():
                 order = result.body['order']
                 if order['state'] == "OPEN":
-                    return {"status": "success", "order": order}
+                    return {"status": "success", "order": order, }
                 else:
-                    return {"status": "pending", "message": "Payment not yet completed"}
+                    return {"status": "pending", "message": "Payment not yet completed", 'state': order['state']}
+            elif result.is_error():
+                return {
+                    "status": "error",
+                    "message": result.errors[0]['detail']
+                }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def delete_payment_link(self, payment_id: str):
+        """
+        Delete the payment link for the given order ID.
+        """
+        try:
+            # Delete the payment link
+            result = self.client.checkout.delete_payment_link(payment_id)
+            if result.is_success():
+                return {"status": "success"}
             elif result.is_error():
                 return {
                     "status": "error",

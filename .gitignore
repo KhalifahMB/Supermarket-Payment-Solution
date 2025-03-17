@@ -13,3 +13,5 @@ env/
 
 receipts/
 payment testing/
+utils/receipt.py
+receipt.py
