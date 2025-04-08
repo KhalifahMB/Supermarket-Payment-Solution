@@ -12,7 +12,7 @@ class DatabaseManager:
         # Create tables if they do not exist
         with self.get_cursor() as cursor:
             # Create Users table with id, username, password, and role columns
-            cursor.execute('''
+            cursor.execute(''' 
                 CREATE TABLE IF NOT EXISTS Users (
                     id INTEGER PRIMARY KEY,
                     username TEXT UNIQUE,

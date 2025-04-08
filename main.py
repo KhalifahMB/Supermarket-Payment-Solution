@@ -5,9 +5,17 @@ from gui.cashier import CashierInterface
 from gui.admin import AdminDashboard
 
 
+def get_initial_theme():
+    try:
+        with open('theme.txt', 'r') as file:
+            return file.read()
+    except FileNotFoundError:
+        return 'darkly'
+
+
 class POSApp(ttk.Window):
     def __init__(self):
-        theme = self.get_initial_theme()
+        theme = get_initial_theme()
         super().__init__(themename=theme)
         self.title("Supermarket POS")
         self.geometry("800x600")
@@ -32,13 +40,6 @@ class POSApp(ttk.Window):
 
     def exit_app(self):
         self.destroy()  # Close the application
-
-    def get_initial_theme(self):
-        try:
-            with open('theme.txt', 'r') as file:
-                return file.read()
-        except FileNotFoundError:
-            return 'darkly'
 
     def show_login_screen(self):
         self.clear_frame()
